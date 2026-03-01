@@ -1,5 +1,5 @@
 #pragma once
-// LilyGo T5S3 4.7" e-paper PRO (Headless / No E-ink Driver)
+// LilyGo T5S3 4.7" e-paper PRO (NicheGraphics / InkHUD + epdiy)
 
 #define HAS_SDCARD
 #define SDCARD_USE_SPI1
@@ -43,7 +43,7 @@
 #endif
 
 // Power / Button
-#define BUTTON_PIN 48 // BOOT button
+#define BUTTON_PIN 0 // BOOT button (GPIO 0)
 // #define BUTTON_NEED_PULLUP
 
 // Battery Manager BQ25896
