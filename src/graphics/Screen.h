@@ -89,6 +89,7 @@ class Screen
 
 #include "EInkDisplay2.h"
 #include "EInkDynamicDisplay.h"
+#include "EInkEpdiyDisplay.h"
 #include "PointStruct.h"
 #include "TFTDisplay.h"
 #include "TypedQueue.h"

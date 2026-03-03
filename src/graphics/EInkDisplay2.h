@@ -1,6 +1,7 @@
 #pragma once
 
 #ifdef USE_EINK
+#ifndef USE_EINK_EPDIY
 
 #include "GxEPD2_BW.h"
 #include <OLEDDisplay.h>
@@ -103,4 +104,5 @@ class EInkDisplay : public OLEDDisplay
     uint32_t lastDrawMsec = 0;
 };
 
-#endif
+#endif // !USE_EINK_EPDIY
+#endif // USE_EINK

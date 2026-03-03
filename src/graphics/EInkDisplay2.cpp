@@ -1,6 +1,7 @@
 #include "configuration.h"
 
 #ifdef USE_EINK
+#ifndef USE_EINK_EPDIY
 #include "EInkDisplay2.h"
 #include "SPILock.h"
 #include "main.h"
@@ -292,4 +293,5 @@ bool EInkDisplay::connect()
     return true;
 }
 
-#endif
+#endif // !USE_EINK_EPDIY
+#endif // USE_EINK

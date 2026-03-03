@@ -364,6 +364,9 @@ Screen::Screen(ScanI2C::DeviceAddress address, meshtastic_Config_DisplayConfig_O
     defined(RAK14014) || defined(HX8357_CS) || defined(ILI9488_CS) || defined(ST7796_CS) || defined(HACKADAY_COMMUNICATOR)
     dispdev = new TFTDisplay(address.address, -1, -1, geometry,
                              (address.port == ScanI2C::I2CPort::WIRE1) ? HW_I2C::I2C_TWO : HW_I2C::I2C_ONE);
+#elif defined(USE_EINK) && defined(USE_EINK_EPDIY)
+    dispdev = new EInkEpdiyDisplay(address.address, -1, -1, geometry,
+                                   (address.port == ScanI2C::I2CPort::WIRE1) ? HW_I2C::I2C_TWO : HW_I2C::I2C_ONE);
 #elif defined(USE_EINK) && !defined(USE_EINK_DYNAMICDISPLAY)
     dispdev = new EInkDisplay(address.address, -1, -1, geometry,
                               (address.port == ScanI2C::I2CPort::WIRE1) ? HW_I2C::I2C_TWO : HW_I2C::I2C_ONE);
@@ -684,6 +687,8 @@ void Screen::setup()
     touchScreenImpl1 =
         new TouchScreenImpl1(dispdev->getWidth(), dispdev->getHeight(), static_cast<TFTDisplay *>(dispdev)->getTouch);
     touchScreenImpl1->init();
+#elif HAS_TOUCHSCREEN && defined(USE_EINK_EPDIY)
+    // Touch screen for epdiy e-ink displays is initialized in lateInitVariant()
 #endif
 
     // Subscribe to device status updates
@@ -750,7 +755,11 @@ void Screen::forceDisplay(bool forceUiUpdate)
     }
 
     // Tell EInk class to update the display
+#if defined(USE_EINK_EPDIY)
+    static_cast<EInkEpdiyDisplay *>(dispdev)->forceDisplay();
+#else
     static_cast<EInkDisplay *>(dispdev)->forceDisplay();
+#endif
 #else
     // No delay between UI frame rendering
     if (forceUiUpdate) {
@@ -990,7 +999,9 @@ void Screen::setScreensaverFrames(FrameCallback einkScreensaver)
     } while (ui->getUiState()->lastUpdate < startUpdate);
 
     // Old EInkDisplay class
-#if !defined(USE_EINK_DYNAMICDISPLAY)
+#if defined(USE_EINK_EPDIY)
+    static_cast<EInkEpdiyDisplay *>(dispdev)->forceDisplay(0);
+#elif !defined(USE_EINK_DYNAMICDISPLAY)
     static_cast<EInkDisplay *>(dispdev)->forceDisplay(0); // Screen::forceDisplay(), but override rate-limit
 #endif
 
