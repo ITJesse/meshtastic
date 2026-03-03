@@ -11,13 +11,29 @@
 #define EINK_SCALE 2
 #endif
 
+// Safe display area: physical pixels hidden by enclosure on each side.
+// Define these in variant.h to inset the UI content away from hidden edges.
+#ifndef EINK_SAFE_AREA_LEFT
+#define EINK_SAFE_AREA_LEFT 0
+#endif
+#ifndef EINK_SAFE_AREA_RIGHT
+#define EINK_SAFE_AREA_RIGHT 0
+#endif
+#ifndef EINK_SAFE_AREA_TOP
+#define EINK_SAFE_AREA_TOP 0
+#endif
+#ifndef EINK_SAFE_AREA_BOTTOM
+#define EINK_SAFE_AREA_BOTTOM 0
+#endif
+
 // Constructor
 EInkEpdiyDisplay::EInkEpdiyDisplay(uint8_t address, int sda, int scl, OLEDDISPLAY_GEOMETRY geometry, HW_I2C i2cBus)
 {
     // Set logical dimensions in OLEDDisplay base class (what the UI renders to)
+    // Subtract safe area insets so UI only renders within the visible region
     this->geometry = GEOMETRY_RAWMODE;
-    this->displayWidth = EINK_WIDTH / EINK_SCALE;   // Logical width (e.g. 480 for 960/2)
-    this->displayHeight = EINK_HEIGHT / EINK_SCALE; // Logical height (e.g. 270 for 540/2)
+    this->displayWidth = (EINK_WIDTH - EINK_SAFE_AREA_LEFT - EINK_SAFE_AREA_RIGHT) / EINK_SCALE;
+    this->displayHeight = (EINK_HEIGHT - EINK_SAFE_AREA_TOP - EINK_SAFE_AREA_BOTTOM) / EINK_SCALE;
 
     // Round shortest side up to nearest byte, to prevent truncation causing an undersized buffer
     uint16_t shortSide = min(displayWidth, displayHeight);
@@ -78,13 +94,14 @@ bool EInkEpdiyDisplay::forceDisplay(uint32_t msecLimit)
 
             if (isset) {
                 // WHITE(1) in OLEDDisplay buffer = BLACK on e-paper
+                // Apply safe area offset so content is rendered within the visible region
                 uint32_t baseX, baseY;
                 if (flipped) {
-                    baseX = (displayWidth - 1 - x) * EINK_SCALE;
-                    baseY = (displayHeight - 1 - y) * EINK_SCALE;
+                    baseX = (displayWidth - 1 - x) * EINK_SCALE + EINK_SAFE_AREA_LEFT;
+                    baseY = (displayHeight - 1 - y) * EINK_SCALE + EINK_SAFE_AREA_TOP;
                 } else {
-                    baseX = x * EINK_SCALE;
-                    baseY = y * EINK_SCALE;
+                    baseX = x * EINK_SCALE + EINK_SAFE_AREA_LEFT;
+                    baseY = y * EINK_SCALE + EINK_SAFE_AREA_TOP;
                 }
 
                 // Fill a EINK_SCALE x EINK_SCALE block of black pixels
