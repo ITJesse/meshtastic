@@ -7,7 +7,18 @@
 
 extern XPowersPPM *PPM;
 
+#define BOARD_BL_EN 11
+
 static TouchDrvGT911 touch;
+static uint8_t backlightLevel = 0; // 0=off, 1=low, 2=mid, 3=high
+
+static void cycleBacklight(void *user_data)
+{
+    backlightLevel = (backlightLevel + 1) & 0x03;
+    static const uint8_t brightness[] = {0, 50, 100, 230};
+    analogWrite(BOARD_BL_EN, brightness[backlightLevel]);
+    LOG_INFO("Backlight level: %d", backlightLevel);
+}
 
 // Callback for TouchScreenImpl1 - reads touch coordinates from GT911
 static bool readTouch(int16_t *x, int16_t *y)
@@ -50,9 +61,16 @@ void lateInitVariant()
 
     // Initialize GT911 touchscreen via I2C (shared bus with epdiy PMICs)
     touch.setPins(SCREEN_TOUCH_RST, SCREEN_TOUCH_INT);
+    // Initialize backlight pin (default off)
+    pinMode(BOARD_BL_EN, OUTPUT);
+    analogWrite(BOARD_BL_EN, 0);
+
     if (touch.begin(Wire, TOUCH_SLAVE_ADDRESS, I2C_SDA, I2C_SCL)) {
         touch.setInterruptMode(0x03); // LOW_LEVEL_QUERY
         LOG_INFO("GT911 touchscreen initialized");
+
+        // Home button on touch screen cycles backlight: off -> low -> mid -> high -> off
+        touch.setHomeButtonCallback(cycleBacklight, NULL);
 
         // Create TouchScreenImpl1 with readTouch callback
         // This automatically registers with InputBroker for default UI input

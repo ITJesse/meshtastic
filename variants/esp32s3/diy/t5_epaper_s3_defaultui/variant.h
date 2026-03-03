@@ -63,6 +63,13 @@
 #define SCREEN_TOUCH_RST 9
 #define TOUCH_SLAVE_ADDRESS 0x5D
 
+// Safe display area: physical pixels hidden by enclosure on each side.
+// Uncomment and adjust values to inset UI content away from hidden edges.
+#define EINK_SAFE_AREA_LEFT   5
+#define EINK_SAFE_AREA_RIGHT  5
+#define EINK_SAFE_AREA_TOP    0
+#define EINK_SAFE_AREA_BOTTOM 10
+
 // Fix PlatformIO generic board macro collisions
 #undef LED_BUILTIN
 
