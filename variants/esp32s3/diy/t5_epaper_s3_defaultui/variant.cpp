@@ -3,6 +3,9 @@
 #include "TouchDrvGT911.hpp"
 #include "input/TouchScreenImpl1.h"
 #include <Wire.h>
+#include <XPowersLib.h>
+
+extern XPowersPPM *PPM;
 
 static TouchDrvGT911 touch;
 
@@ -36,6 +39,20 @@ void earlyInitVariant()
 
 void lateInitVariant()
 {
+    // BQ25896: Configure power path for battery-only operation.
+    // Without these settings, the e-paper display (TPS65185) may not receive
+    // sufficient power when USB is disconnected, because the default ILIM pin
+    // restricts system current delivery.
+    if (PPM) {
+        PPM->disableCurrentLimitPin();
+        PPM->setSysPowerDownVoltage(3300);
+        PPM->setInputCurrentLimit(3250);
+        PPM->setPrechargeCurr(64);
+        PPM->setChargeTargetVoltage(4208);
+        PPM->disableOTG();
+        LOG_INFO("BQ25896 power path configured for T5S3 PRO");
+    }
+
     // Initialize GT911 touchscreen via I2C (shared bus with epdiy PMICs)
     touch.setPins(SCREEN_TOUCH_RST, SCREEN_TOUCH_INT);
     if (touch.begin(Wire, TOUCH_SLAVE_ADDRESS, I2C_SDA, I2C_SCL)) {

@@ -19,6 +19,7 @@ E-Ink display driver for parallel epdiy-based displays
 extern "C" {
 #include <epd_highlevel.h>
 #include <epdiy.h>
+#include "graphics/epd_board_t5s3_pro.h"
 }
 
 namespace NicheGraphics::Drivers

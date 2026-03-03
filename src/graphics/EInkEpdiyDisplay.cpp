@@ -153,7 +153,7 @@ bool EInkEpdiyDisplay::connect()
 
     // Initialize epdiy with v7 board and ED047TC2 waveform
     // ED047TC2 produces cleaner font rendering with fewer artifacts on the T5S3 PRO
-    epd_init(&epd_board_v7, &ED047TC2, EPD_LUT_64K);
+    epd_init(&epd_board_t5s3_pro, &ED047TC2, EPD_LUT_64K);
 
     // Set VCOM voltage via TPS65185 (I2C)
     epd_set_vcom(1560);

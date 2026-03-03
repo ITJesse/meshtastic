@@ -364,9 +364,11 @@ void doDeepSleep(uint32_t msecToWake, bool skipPreflight = false, bool skipSaveN
     }
 #endif
 
-#if !MESHTASTIC_EXCLUDE_I2C && defined(ARCH_ESP32) && defined(I2C_SDA)
+#if !MESHTASTIC_EXCLUDE_I2C && defined(ARCH_ESP32) && defined(I2C_SDA) && !defined(USE_EINK_EPDIY)
     // Added by https://github.com/meshtastic/firmware/pull/4418
     // Possibly to support Heltec Capsule Sensor?
+    // Skipped for USE_EINK_EPDIY: setFrames(FOCUS_PRESERVE) during shutdown causes heap corruption
+    // detected by Wire.end() → freeWireBuffer(). Safe to skip since CPU is about to deep sleep.
     Wire.end();
     pinMode(I2C_SDA, ANALOG);
     pinMode(I2C_SCL, ANALOG);
