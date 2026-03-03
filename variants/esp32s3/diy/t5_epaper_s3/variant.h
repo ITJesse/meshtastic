@@ -1,5 +1,5 @@
 #pragma once
-// LilyGo T5S3 4.7" e-paper PRO (NicheGraphics / InkHUD + epdiy)
+// LilyGo T5S3 4.7" e-paper PRO (Default UI + epdiy + GT911 Touch)
 
 #define HAS_SDCARD
 #define SDCARD_USE_SPI1
@@ -46,6 +46,10 @@
 #define BUTTON_PIN 0 // BOOT button (GPIO 0)
 // #define BUTTON_NEED_PULLUP
 
+// PCA9535 IO Expander physical button (shared INT with epdiy PMICs)
+#define PCA9535_INT_PIN 38
+#define PCA9535_BUTTON_MASK 0x04 // Port 1, bit 2 (active low)
+
 // Battery Manager BQ25896
 #define HAS_PPM 1
 #define XPOWERS_CHIP_BQ25896
@@ -56,6 +60,23 @@
 #define BQ27220_I2C_SDA I2C_SDA
 #define BQ27220_I2C_SCL I2C_SCL
 #define BQ27220_DESIGN_CAPACITY 1500
+
+// Touch Screen (GT911)
+#define HAS_TOUCHSCREEN 1
+#define SCREEN_TOUCH_INT 3
+#define SCREEN_TOUCH_RST 9
+#define TOUCH_SLAVE_ADDRESS 0x5D
+#define USE_VIRTUAL_KEYBOARD 1
+
+// Screen scale factor (physical pixels per logical pixel)
+#define EINK_SCALE 2
+
+// Safe display area: physical pixels hidden by enclosure on each side.
+// Uncomment and adjust values to inset UI content away from hidden edges.
+#define EINK_SAFE_AREA_LEFT   5
+#define EINK_SAFE_AREA_RIGHT  5
+#define EINK_SAFE_AREA_TOP    0
+#define EINK_SAFE_AREA_BOTTOM 10
 
 // Fix PlatformIO generic board macro collisions
 #undef LED_BUILTIN
