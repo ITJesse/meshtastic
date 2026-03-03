@@ -37,7 +37,7 @@ class EInkEpdiyDisplay : public OLEDDisplay
      *
      * @return true if we did draw the screen
      */
-    bool forceDisplay(uint32_t msecLimit = 300);
+    bool forceDisplay(uint32_t msecLimit = 50);
 
     /**
      * Enable or disable fast refresh (MODE_DU) for subsequent updates.
