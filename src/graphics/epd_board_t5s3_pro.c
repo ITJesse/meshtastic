@@ -305,7 +305,11 @@ static void t5s3_board_poweroff(epd_ctrl_state_t *state) {
 }
 
 static float t5s3_board_ambient_temperature() {
-    return 20;
+    float temp = tps_read_thermistor(T5S3_I2C_PORT);
+    if (temp <= -20.0f || temp >= 80.0f) {
+        return 20.0f;
+    }
+    return temp;
 }
 
 static void t5s3_set_vcom(int value) {

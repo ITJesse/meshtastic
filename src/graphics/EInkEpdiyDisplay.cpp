@@ -41,11 +41,18 @@ bool EInkEpdiyDisplay::forceDisplay(uint32_t msecLimit)
     else
         return false;
 
+    // Determine refresh mode: FULL (MODE_GL16) or FAST (MODE_DU)
+    bool doFullRefresh = !useFastRefresh || pendingFullRefresh || (fastRefreshCount >= fastRefreshLimit);
+
     // Get the epdiy 4bpp framebuffer
     uint8_t *fb = epd_hl_get_framebuffer(&hl);
 
-    // Reset diff state for full redraw
-    epd_hl_set_all_white(&hl);
+    // Full refresh: reset epdiy diff state so every pixel is redrawn.
+    // This clears ghosting but is slow (~1.5s with GL16).
+    // Fast refresh: skip reset so epdiy only drives changed pixels via MODE_DU (~260ms).
+    if (doFullRefresh) {
+        epd_hl_set_all_white(&hl);
+    }
 
     // epdiy framebuffer is ALWAYS in native panel dimensions (960x540 for ED047TC1)
     // regardless of epd_set_rotation(). Row stride = native_width / 2 bytes.
@@ -99,14 +106,27 @@ bool EInkEpdiyDisplay::forceDisplay(uint32_t msecLimit)
         }
     }
 
+    // Select draw mode:
+    // FULL: MODE_GL16 for grayscale refresh, faster than GC16 with comparable text quality (~1.5s)
+    // FAST: MODE_DU for fast monochrome differential update (only changed pixels, ~260ms)
+    enum EpdDrawMode mode = doFullRefresh ? MODE_GL16 : MODE_DU;
+
     // Power on → synchronous refresh → power off
-    LOG_DEBUG("Update epdiy E-Paper");
+    LOG_DEBUG("Update epdiy E-Paper (%s)", doFullRefresh ? "FULL" : "FAST");
     epd_poweron();
-    enum EpdDrawError err = epd_hl_update_screen(&hl, MODE_GC16, epd_ambient_temperature());
+    enum EpdDrawError err = epd_hl_update_screen(&hl, mode, epd_ambient_temperature());
     epd_poweroff();
 
     if (err != EPD_DRAW_SUCCESS) {
         LOG_ERROR("epdiy draw error: 0x%X", err);
+    }
+
+    // Update refresh counters
+    if (doFullRefresh) {
+        fastRefreshCount = 0;
+        pendingFullRefresh = false;
+    } else {
+        fastRefreshCount++;
     }
 
     // End the update process
