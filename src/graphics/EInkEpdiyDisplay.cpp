@@ -45,44 +45,21 @@ EInkEpdiyDisplay::EInkEpdiyDisplay(uint8_t address, int sda, int scl, OLEDDISPLA
 }
 
 /**
- * Force a display update if we haven't drawn within the specified msecLimit
+ * Convert OLEDDisplay 1bpp buffer → epdiy 4bpp framebuffer with EINK_SCALE upscaling.
+ * Clears the framebuffer to white, then renders black pixels with safe area offsets.
  */
-bool EInkEpdiyDisplay::forceDisplay(uint32_t msecLimit)
+void EInkEpdiyDisplay::renderToFramebuffer(uint8_t *fb)
 {
-    uint32_t now = millis();
-    uint32_t sinceLast = now - lastDrawMsec;
-
-    if (sinceLast > msecLimit || lastDrawMsec == 0)
-        lastDrawMsec = now;
-    else
-        return false;
-
-    // Determine refresh mode: FULL (MODE_GL16) or FAST (MODE_DU)
-    bool doFullRefresh = !useFastRefresh || pendingFullRefresh || (fastRefreshCount >= fastRefreshLimit);
-
-    // Get the epdiy 4bpp framebuffer
-    uint8_t *fb = epd_hl_get_framebuffer(&hl);
-
-    // Full refresh: reset epdiy diff state so every pixel is redrawn.
-    // This clears ghosting but is slow (~1.5s with GL16).
-    // Fast refresh: skip reset so epdiy only drives changed pixels via MODE_DU (~260ms).
-    if (doFullRefresh) {
-        epd_hl_set_all_white(&hl);
-    }
-
     // epdiy framebuffer is ALWAYS in native panel dimensions (960x540 for ED047TC1)
-    // regardless of epd_set_rotation(). Row stride = native_width / 2 bytes.
-    const uint32_t nativeW = epd_width();  // 960 (physical panel width)
-    const uint32_t nativeH = epd_height(); // 540 (physical panel height)
-    const uint32_t fbStride = nativeW / 2; // 480 bytes per row in 4bpp
+    // regardless of epd_set_rotation(). Row stride = native_width / 2 bytes (4bpp).
+    const uint32_t nativeW = epd_width();
+    const uint32_t nativeH = epd_height();
+    const uint32_t fbStride = nativeW / 2;
 
     // Clear framebuffer to white (0xFF = white in 4bpp)
     memset(fb, 0xFF, nativeW * nativeH / 2);
 
-    // Convert OLEDDisplay 1bpp buffer to epdiy 4bpp framebuffer with upscaling
-    //
     // OLEDDisplay buffer is displayWidth x displayHeight (e.g. 480x270)
-    // epdiy framebuffer is nativeW x nativeH (960x540)
     // Each logical pixel maps to a EINK_SCALE x EINK_SCALE block of physical pixels
     const bool flipped = config.display.flip_screen;
 
@@ -122,6 +99,43 @@ bool EInkEpdiyDisplay::forceDisplay(uint32_t msecLimit)
             }
         }
     }
+}
+
+/**
+ * Force a display update if we haven't drawn within the specified msecLimit
+ */
+bool EInkEpdiyDisplay::forceDisplay(uint32_t msecLimit)
+{
+    uint32_t now = millis();
+    uint32_t sinceLast = now - lastDrawMsec;
+
+    if (sinceLast > msecLimit || lastDrawMsec == 0)
+        lastDrawMsec = now;
+    else
+        return false;
+
+    // Non-blocking: skip this frame if cleanRefresh() is in progress
+    if (xSemaphoreTake(epdiyMutex, 0) != pdTRUE) {
+        LOG_DEBUG("epdiy busy (cleanRefresh in progress), skipping frame");
+        lastDrawMsec = 0; // Reset so next call retries immediately
+        return false;
+    }
+
+    // Determine refresh mode: FULL (MODE_GL16) or FAST (MODE_DU)
+    bool doFullRefresh = !useFastRefresh || pendingFullRefresh || (fastRefreshCount >= fastRefreshLimit);
+
+    // Get the epdiy 4bpp framebuffer
+    uint8_t *fb = epd_hl_get_framebuffer(&hl);
+
+    // Full refresh: reset epdiy diff state so every pixel is redrawn.
+    // This clears ghosting but is slow (~1.5s with GL16).
+    // Fast refresh: skip reset so epdiy only drives changed pixels via MODE_DU (~260ms).
+    if (doFullRefresh) {
+        epd_hl_set_all_white(&hl);
+    }
+
+    // Convert OLEDDisplay 1bpp buffer → epdiy 4bpp framebuffer with upscaling
+    renderToFramebuffer(fb);
 
     // Select draw mode:
     // FULL: MODE_GL16 for grayscale refresh, faster than GC16 with comparable text quality (~1.5s)
@@ -149,6 +163,7 @@ bool EInkEpdiyDisplay::forceDisplay(uint32_t msecLimit)
     // End the update process
     endUpdate();
 
+    xSemaphoreGive(epdiyMutex);
     LOG_DEBUG("done");
     return true;
 }
@@ -158,6 +173,48 @@ void EInkEpdiyDisplay::endUpdate()
 {
     // epdiy power is already managed in forceDisplay()
     // Nothing additional needed here
+}
+
+/**
+ * Two-pass clean refresh:
+ *   Pass 1: epd_clear() → hardware direct clear to white (power stays on for pass 2)
+ *   Pass 2: re-render OLEDDisplay buffer → epdiy framebuffer + MODE_GC16 → full quality redraw
+ */
+void EInkEpdiyDisplay::cleanRefresh()
+{
+    // Block until epdiy is idle (waits for any in-progress forceDisplay to finish)
+    xSemaphoreTake(epdiyMutex, portMAX_DELAY);
+
+    // --- Pass 1: Physical clear (bypasses diff to clear white-area ghosting) ---
+    LOG_INFO("Clean refresh: physical clear");
+    epd_poweron();
+    epd_clear();
+
+    // --- Pass 2: Re-render content with MODE_GC16 ---
+    // Reset BOTH front_fb and back_fb to match the now-white physical screen.
+    // back_fb must also be white so that epd_hl_update_screen() diffs correctly
+    // and drives ALL content pixels, not just pixels that differ from old content.
+    epd_hl_set_all_white(&hl);
+    int fb_size = epd_width() / 2 * epd_height();
+    memset(hl.back_fb, 0xFF, fb_size);
+
+    renderToFramebuffer(epd_hl_get_framebuffer(&hl));
+
+    LOG_INFO("Clean refresh: redraw with GC16");
+    enum EpdDrawError err = epd_hl_update_screen(&hl, MODE_GC16, epd_ambient_temperature());
+    epd_poweroff();
+
+    if (err != EPD_DRAW_SUCCESS) {
+        LOG_ERROR("epdiy clean refresh error: 0x%X", err);
+    }
+
+    // cleanRefresh is already a complete full-quality redraw, no follow-up needed
+    fastRefreshCount = 0;
+    pendingFullRefresh = false;
+    lastDrawMsec = millis();
+
+    xSemaphoreGive(epdiyMutex);
+    LOG_INFO("Clean refresh done");
 }
 
 // Write the buffer to the display memory
@@ -187,6 +244,9 @@ void EInkEpdiyDisplay::setDetected(uint8_t detected)
 bool EInkEpdiyDisplay::connect()
 {
     LOG_INFO("Do EInk epdiy init");
+
+    // Create mutex for thread-safe epdiy hardware access
+    epdiyMutex = xSemaphoreCreateMutex();
 
     // Initialize epdiy with v7 board and ED047TC2 waveform
     // ED047TC2 produces cleaner font rendering with fewer artifacts on the T5S3 PRO

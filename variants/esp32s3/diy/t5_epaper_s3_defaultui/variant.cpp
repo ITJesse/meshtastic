@@ -1,11 +1,17 @@
 #include "variant.h"
 #include "Arduino.h"
 #include "TouchDrvGT911.hpp"
+#include "graphics/EInkEpdiyDisplay.h"
+#include "graphics/Screen.h"
 #include "input/TouchScreenImpl1.h"
 #include "sleep.h"
 #include <Wire.h>
 #include <XPowersLib.h>
 #include <esp_timer.h>
+
+extern "C" {
+#include <board/pca9555.h>
+}
 
 extern XPowersPPM *PPM;
 
@@ -74,6 +80,50 @@ static bool readTouch(int16_t *x, int16_t *y)
     return false;
 }
 
+// --- PCA9535 physical button: interrupt-driven full refresh ---
+// GPIO 38 (PCA9535 INT) is shared with epdiy power management.
+// The ISR fires for ANY PCA9535 input change (including poweron/poweroff).
+// We debounce + verify button state via I2C, then trigger a full refresh
+// of the current screen content (no page switch).
+
+static TaskHandle_t btnTaskHandle = nullptr;
+
+static void IRAM_ATTR pca9535ButtonISR()
+{
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    vTaskNotifyGiveFromISR(btnTaskHandle, &xHigherPriorityTaskWoken);
+    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+}
+
+static void pca9535ButtonTask(void *param)
+{
+    while (true) {
+        ulTaskNotifyTake(pdTRUE, portMAX_DELAY); // sleep until ISR fires
+
+        // epdiy refresh is synchronous: by the time epd_poweroff() triggers
+        // this PCA9535 interrupt, the refresh has already completed.
+        // Short debounce to filter spurious edges from PMIC I2C activity.
+        delay(100);
+
+        // Read BOTH ports to clear PCA9535 INT line.
+        // INT stays LOW until all input registers are read.
+        pca9555_read_input(I2C_NUM_0, 0);
+        uint8_t val = pca9555_read_input(I2C_NUM_0, 1);
+        bool pressed = !(val & PCA9535_BUTTON_MASK);
+        LOG_INFO("PCA9535 INT fired, port1=0x%02x, button %s", val, pressed ? "PRESSED" : "not pressed");
+
+        // Verify the physical button is actually pressed (not a spurious interrupt)
+#ifdef USE_EINK_EPDIY
+        if (pressed && screen) {
+            auto *eink = static_cast<EInkEpdiyDisplay *>(screen->getDisplayDevice());
+            if (eink) {
+                eink->cleanRefresh(); // two-pass: clear white + redraw with GC16
+            }
+        }
+#endif
+    }
+}
+
 void earlyInitVariant()
 {
     // LORA and SD use the same SPI bus.
@@ -134,4 +184,10 @@ void lateInitVariant()
     } else {
         LOG_ERROR("GT911 touchscreen init failed");
     }
+
+    // PCA9535 button: create task first, then attach interrupt
+    xTaskCreate(pca9535ButtonTask, "pca_btn", 3 * 1024, NULL, 1, &btnTaskHandle);
+    pinMode(PCA9535_INT_PIN, INPUT_PULLUP);
+    attachInterrupt(PCA9535_INT_PIN, pca9535ButtonISR, FALLING);
+    LOG_INFO("PCA9535 button initialized (GPIO %d)", PCA9535_INT_PIN);
 }

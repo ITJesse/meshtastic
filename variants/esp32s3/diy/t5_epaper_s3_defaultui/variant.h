@@ -46,6 +46,10 @@
 #define BUTTON_PIN 0 // BOOT button (GPIO 0)
 // #define BUTTON_NEED_PULLUP
 
+// PCA9535 IO Expander physical button (shared INT with epdiy PMICs)
+#define PCA9535_INT_PIN 38
+#define PCA9535_BUTTON_MASK 0x04 // Port 1, bit 2 (active low)
+
 // Battery Manager BQ25896
 #define HAS_PPM 1
 #define XPOWERS_CHIP_BQ25896

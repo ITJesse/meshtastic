@@ -3,6 +3,7 @@
 #ifdef USE_EINK_EPDIY
 
 #include <OLEDDisplay.h>
+#include <freertos/semphr.h>
 
 // epdiy C API
 extern "C" {
@@ -53,6 +54,15 @@ class EInkEpdiyDisplay : public OLEDDisplay
     void forceFullRefresh() { pendingFullRefresh = true; }
 
     /**
+     * Perform a two-pass clean refresh:
+     *   Pass 1: epd_clear() hardware direct clear to white
+     *   Pass 2: re-render current content with MODE_GC16
+     * This thoroughly clears all ghosting artifacts.
+     * Thread-safe: acquires epdiyMutex to avoid conflicts with forceDisplay().
+     */
+    void cleanRefresh();
+
+    /**
      * Run any code needed to complete an update, after the physical refresh has completed.
      */
     void endUpdate();
@@ -75,6 +85,13 @@ class EInkEpdiyDisplay : public OLEDDisplay
   private:
     EpdiyHighlevelState hl;
     uint32_t lastDrawMsec = 0;
+    SemaphoreHandle_t epdiyMutex = nullptr; // Protects epdiy hardware from concurrent access
+
+    /**
+     * Convert OLEDDisplay 1bpp buffer → epdiy 4bpp framebuffer with EINK_SCALE upscaling.
+     * Clears fb to white, then renders black pixels with safe area offsets.
+     */
+    void renderToFramebuffer(uint8_t *fb);
 
     // Fast refresh state
     bool useFastRefresh = true;         // Enable MODE_DU for fast updates
