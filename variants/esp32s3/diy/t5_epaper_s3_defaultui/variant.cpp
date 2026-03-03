@@ -39,14 +39,9 @@ void earlyInitVariant()
 
 void lateInitVariant()
 {
-    // BQ25896: Configure power path for battery-only operation.
-    // Without these settings, the e-paper display (TPS65185) may not receive
-    // sufficient power when USB is disconnected, because the default ILIM pin
-    // restricts system current delivery.
+    // BQ25896: Configure charging parameters for T5S3 PRO
     if (PPM) {
-        PPM->disableCurrentLimitPin();
         PPM->setSysPowerDownVoltage(3300);
-        PPM->setInputCurrentLimit(3250);
         PPM->setPrechargeCurr(64);
         PPM->setChargeTargetVoltage(4208);
         PPM->disableOTG();

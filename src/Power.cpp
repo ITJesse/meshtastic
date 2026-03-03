@@ -891,6 +891,13 @@ void Power::readPowerStatus()
     if (millis() > lastLogTime + 50 * 1000) {
         LOG_DEBUG("Battery: usbPower=%d, isCharging=%d, batMv=%d, batPct=%d", powerStatus2.getHasUSB(),
                   powerStatus2.getIsCharging(), powerStatus2.getBatteryVoltageMv(), powerStatus2.getBatteryChargePercent());
+#if defined(HAS_PPM) && HAS_PPM
+        if (PPM) {
+            LOG_DEBUG("BQ25896: busStatus=%s, vbusMv=%d, isPowerGood=%d, chargeStatus=%s",
+                      PPM->getBusStatusString(), PPM->getVbusVoltage(), PPM->isPowerGood(),
+                      PPM->getChargeStatusString());
+        }
+#endif
         lastLogTime = millis();
     }
     newStatus.notifyObservers(&powerStatus2);
