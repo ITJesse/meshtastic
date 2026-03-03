@@ -262,6 +262,10 @@ bool EInkEpdiyDisplay::connect()
     // so OLEDDisplay buffer coords map directly to framebuffer coords (with scaling)
     epd_set_rotation(EPD_ROT_LANDSCAPE);
 
+#ifdef EINK_LCD_PIXEL_CLOCK_MHZ
+    epd_set_lcd_pixel_clock_MHz(EINK_LCD_PIXEL_CLOCK_MHZ);
+#endif
+
     LOG_INFO("epdiy panel: native %d x %d, logical %d x %d (scale %d)", epd_width(), epd_height(), displayWidth, displayHeight,
              EINK_SCALE);
 

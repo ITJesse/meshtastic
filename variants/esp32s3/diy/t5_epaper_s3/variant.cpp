@@ -110,6 +110,15 @@ static void pca9535ButtonTask(void *param)
         pca9555_read_input(I2C_NUM_0, 0);
         uint8_t val = pca9555_read_input(I2C_NUM_0, 1);
         bool pressed = !(val & PCA9535_BUTTON_MASK);
+
+        // TPS65185 power transitions can glitch the button line momentarily.
+        // Confirm with a second read after a short delay.
+        if (pressed) {
+            delay(50);
+            pca9555_read_input(I2C_NUM_0, 0);
+            val = pca9555_read_input(I2C_NUM_0, 1);
+            pressed = !(val & PCA9535_BUTTON_MASK);
+        }
         LOG_INFO("PCA9535 INT fired, port1=0x%02x, button %s", val, pressed ? "PRESSED" : "not pressed");
 
         // Verify the physical button is actually pressed (not a spurious interrupt)

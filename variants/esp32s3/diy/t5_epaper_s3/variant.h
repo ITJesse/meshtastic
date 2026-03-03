@@ -74,6 +74,9 @@
 // Screen scale factor (physical pixels per logical pixel)
 #define EINK_SCALE 2
 
+// LCD bus pixel clock (MHz) – official T5S3 PRO recommendation for faster refresh
+#define EINK_LCD_PIXEL_CLOCK_MHZ 10
+
 // Safe display area: physical pixels hidden by enclosure on each side.
 // Uncomment and adjust values to inset UI content away from hidden edges.
 #define EINK_SAFE_AREA_LEFT   5
