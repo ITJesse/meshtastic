@@ -108,8 +108,8 @@ void ED047TC1_Epdiy::convert1bppTo4bpp(const uint8_t *src1bpp, uint8_t *dst4bpp)
 
             // Convert: 1bpp bit 1=white→0xF, 0=black→0x0
             // Pack per epdiy convention: even x → low nibble, odd x → high nibble
-            uint8_t left  = bit0 ? 0x0F : 0x00;  // even x → low nibble
-            uint8_t right = bit1 ? 0xF0 : 0x00;  // odd  x → high nibble
+            uint8_t left = bit0 ? 0x0F : 0x00;  // even x → low nibble
+            uint8_t right = bit1 ? 0xF0 : 0x00; // odd  x → high nibble
             dstRow[x / 2] = left | right;
         }
     }

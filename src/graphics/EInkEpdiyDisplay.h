@@ -61,7 +61,6 @@ class EInkEpdiyDisplay : public OLEDDisplay
   private:
     EpdiyHighlevelState hl;
     uint32_t lastDrawMsec = 0;
-
 };
 
 #endif // USE_EINK_EPDIY

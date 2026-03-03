@@ -17,7 +17,7 @@ EInkEpdiyDisplay::EInkEpdiyDisplay(uint8_t address, int sda, int scl, OLEDDISPLA
     // Set logical dimensions in OLEDDisplay base class (what the UI renders to)
     this->geometry = GEOMETRY_RAWMODE;
     this->displayWidth = EINK_WIDTH / EINK_SCALE;   // Logical width (e.g. 480 for 960/2)
-    this->displayHeight = EINK_HEIGHT / EINK_SCALE;  // Logical height (e.g. 270 for 540/2)
+    this->displayHeight = EINK_HEIGHT / EINK_SCALE; // Logical height (e.g. 270 for 540/2)
 
     // Round shortest side up to nearest byte, to prevent truncation causing an undersized buffer
     uint16_t shortSide = min(displayWidth, displayHeight);
@@ -49,9 +49,9 @@ bool EInkEpdiyDisplay::forceDisplay(uint32_t msecLimit)
 
     // epdiy framebuffer is ALWAYS in native panel dimensions (960x540 for ED047TC1)
     // regardless of epd_set_rotation(). Row stride = native_width / 2 bytes.
-    const uint32_t nativeW = epd_width();   // 960 (physical panel width)
-    const uint32_t nativeH = epd_height();  // 540 (physical panel height)
-    const uint32_t fbStride = nativeW / 2;  // 480 bytes per row in 4bpp
+    const uint32_t nativeW = epd_width();  // 960 (physical panel width)
+    const uint32_t nativeH = epd_height(); // 540 (physical panel height)
+    const uint32_t fbStride = nativeW / 2; // 480 bytes per row in 4bpp
 
     // Clear framebuffer to white (0xFF = white in 4bpp)
     memset(fb, 0xFF, nativeW * nativeH / 2);
@@ -165,8 +165,8 @@ bool EInkEpdiyDisplay::connect()
     // so OLEDDisplay buffer coords map directly to framebuffer coords (with scaling)
     epd_set_rotation(EPD_ROT_LANDSCAPE);
 
-    LOG_INFO("epdiy panel: native %d x %d, logical %d x %d (scale %d)",
-             epd_width(), epd_height(), displayWidth, displayHeight, EINK_SCALE);
+    LOG_INFO("epdiy panel: native %d x %d, logical %d x %d (scale %d)", epd_width(), epd_height(), displayWidth, displayHeight,
+             EINK_SCALE);
 
     // Initial full clear of the physical display
     epd_poweron();

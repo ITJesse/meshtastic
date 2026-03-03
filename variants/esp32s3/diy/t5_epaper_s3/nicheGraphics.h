@@ -61,8 +61,8 @@ void setupNicheGraphics()
     // Customize default settings
     // 960x540 is large enough for multiple tiles
     inkhud->persistence->settings.userTiles.maxCount = 4;
-    inkhud->persistence->settings.rotation = 3;          // 270 degrees clockwise (portrait, USB at bottom)
-    inkhud->persistence->settings.userTiles.count = 2;   // Two tiles by default
+    inkhud->persistence->settings.rotation = 3;        // 270 degrees clockwise (portrait, USB at bottom)
+    inkhud->persistence->settings.userTiles.count = 2; // Two tiles by default
 
     // Pick applets
     // Note: order of applets determines priority of "auto-show" feature
