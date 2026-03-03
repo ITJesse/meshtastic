@@ -61,6 +61,9 @@
 #define BQ27220_I2C_SCL I2C_SCL
 #define BQ27220_DESIGN_CAPACITY 1500
 
+// PCF8563 RTC Module
+#define PCF8563_RTC 0x51
+
 // Touch Screen (GT911)
 #define HAS_TOUCHSCREEN 1
 #define SCREEN_TOUCH_INT 3
