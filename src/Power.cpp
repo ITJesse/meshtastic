@@ -1566,9 +1566,13 @@ class LipoCharger : public HasBatteryLevel
      */
     virtual int getBatteryPercent() override
     {
+#ifdef BQ27220_USE_CHARGE_PERCENT
+        return bq->getChargePercent();
+#else
         return -1;
         // return bq->getChargePercent(); // don't use BQ27220 for battery percent,
         // it is not calibrated
+#endif
     }
 
     /**
