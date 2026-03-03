@@ -55,14 +55,19 @@ static BacklightSleepObserver backlightDeepSleepObserver;
 static BacklightSleepObserver backlightLightSleepObserver;
 
 // Callback for TouchScreenImpl1 - reads touch coordinates from GT911
+// GT911 reports physical pixel coords (960x540), but the UI framework
+// (OLEDDisplay / virtual keyboard) works in logical coords (~475x265).
+// We must scale here so touch hits match drawn UI elements.
+
 static bool readTouch(int16_t *x, int16_t *y)
 {
     int16_t x_array[1], y_array[1];
     if (touch.isPressed()) {
         uint8_t touched = touch.getPoint(x_array, y_array, 1);
         if (touched > 0) {
-            *x = x_array[0];
-            *y = y_array[0];
+            // Convert physical → logical: subtract safe-area offset, then scale down
+            *x = (x_array[0] - EINK_SAFE_AREA_LEFT) / EINK_SCALE;
+            *y = (y_array[0] - EINK_SAFE_AREA_TOP) / EINK_SCALE;
             return true;
         }
     }
@@ -76,10 +81,8 @@ void earlyInitVariant()
     pinMode(LORA_CS, OUTPUT);
     digitalWrite(LORA_CS, HIGH);
 
-#ifdef SDCARD_CS
     pinMode(SDCARD_CS, OUTPUT);
     digitalWrite(SDCARD_CS, HIGH);
-#endif
 }
 
 void lateInitVariant()
@@ -112,14 +115,21 @@ void lateInitVariant()
 
     if (touch.begin(Wire, TOUCH_SLAVE_ADDRESS, I2C_SDA, I2C_SCL)) {
         touch.setInterruptMode(0x03); // LOW_LEVEL_QUERY
+        // GT911 reports portrait coords (540x960); swap X/Y for landscape (960x540)
+        touch.setSwapXY(true);
+        // After swap: X range=0..960, Y range=0..540. Must set max for mirror to work.
+        touch.setMaxCoordinates(960, 540);
+        touch.setMirrorXY(false, true);
         LOG_INFO("GT911 touchscreen initialized");
 
         // Home button on touch screen toggles backlight (15s auto-off)
         touch.setHomeButtonCallback(toggleBacklight, NULL);
 
-        // Create TouchScreenImpl1 with readTouch callback
-        // This automatically registers with InputBroker for default UI input
-        touchScreenImpl1 = new TouchScreenImpl1(EINK_WIDTH, EINK_HEIGHT, readTouch);
+        // Create TouchScreenImpl1 with readTouch callback (logical coords)
+        // readTouch already converts physical→logical, so pass logical dimensions
+        int logicalW = (EINK_WIDTH - EINK_SAFE_AREA_LEFT - EINK_SAFE_AREA_RIGHT) / EINK_SCALE;
+        int logicalH = (EINK_HEIGHT - EINK_SAFE_AREA_TOP - EINK_SAFE_AREA_BOTTOM) / EINK_SCALE;
+        touchScreenImpl1 = new TouchScreenImpl1(logicalW, logicalH, readTouch);
         touchScreenImpl1->init();
     } else {
         LOG_ERROR("GT911 touchscreen init failed");

@@ -62,6 +62,10 @@
 #define SCREEN_TOUCH_INT 3
 #define SCREEN_TOUCH_RST 9
 #define TOUCH_SLAVE_ADDRESS 0x5D
+#define USE_VIRTUAL_KEYBOARD 1
+
+// Screen scale factor (physical pixels per logical pixel)
+#define EINK_SCALE 2
 
 // Safe display area: physical pixels hidden by enclosure on each side.
 // Uncomment and adjust values to inset UI content away from hidden edges.
