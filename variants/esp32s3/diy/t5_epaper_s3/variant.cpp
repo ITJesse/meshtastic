@@ -119,7 +119,7 @@ static void pca9535ButtonTask(void *param)
             val = pca9555_read_input(I2C_NUM_0, 1);
             pressed = !(val & PCA9535_BUTTON_MASK);
         }
-        LOG_INFO("PCA9535 INT fired, port1=0x%02x, button %s", val, pressed ? "PRESSED" : "not pressed");
+        LOG_DEBUG("PCA9535 INT fired, port1=0x%02x, button %s", val, pressed ? "PRESSED" : "not pressed");
 
         // Verify the physical button is actually pressed (not a spurious interrupt)
 #ifdef USE_EINK_EPDIY
